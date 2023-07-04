@@ -14,6 +14,9 @@
 #endif
 #define OPENWEATHERMAP_URL "https://api.openweathermap.org/data/2.5/forecast?q="
 #define URL_REQ OPENWEATHERMAP_URL OPENWEATHERMAP_CITY "," OPENWEATHERMAP_STATE_CODE "&appid=" OPENWEATHERMAP_APIKEY "&cnt=24"
+
+
+
 /*
     TODO:   multiple location support
             measurement unit conversion (?)
