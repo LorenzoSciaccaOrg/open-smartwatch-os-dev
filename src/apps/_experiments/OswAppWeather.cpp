@@ -3,14 +3,15 @@
 #include "apps/_experiments/OswAppWeatherEncoder.h"
 #include "services/OswServiceTaskWiFi.h"
 #include <services/OswServiceTasks.h>
-#include <HTTPClient.h>
 #include <cstring>
 #include <gfx_util.h>
-#include <osw_app.h>
+#include <OswAppV1.h>
 #include <osw_hal.h>
 #include "fonts/DS_DIGI12pt7b.h"
 #include "ArduinoJson.h"
-
+#ifndef OSW_EMULATOR 
+#include <HTTPClient.h>
+#endif
 #define OPENWEATHERMAP_URL "https://api.openweathermap.org/data/2.5/forecast?q="
 #define URL_REQ OPENWEATHERMAP_URL OPENWEATHERMAP_CITY "," OPENWEATHERMAP_STATE_CODE "&appid=" OPENWEATHERMAP_APIKEY "&cnt=24"
 /*
@@ -252,7 +253,7 @@ void OswAppWeather::printLastUpdate() {
     this->hal->gfx()->setTextCursor(120, 225);
     this->hal->gfx()->print(this->initTimeDMY);
 }
-
+#ifndef OSW_EMULATOR
 void OswAppWeather::weatherRequest() {
     if(!OswServiceAllTasks::wifi.isConnected()) {
         OswServiceAllTasks::wifi.enableWiFi();
@@ -309,6 +310,17 @@ bool OswAppWeather::_request() {
     }
 
 }
+#else 
+void OswAppWeather::weatherRequest() {
+    this->requestMode = true;
+}
+bool OswAppWeather::_request() {
+     this->requestMode=false;
+     this->dataLoaded=true;
+     return true;
+}
+#endif
+
 
 void OswAppWeather::getDayList(int nUpdates) {
     time_t timestamp = this->initTimestamp;
@@ -379,14 +391,17 @@ void OswAppWeather::printDate() {
 }
 
 bool OswAppWeather::loadData() {
-    String wstr = this->pref.getString("wtr");
-    if (!wstr.equals("")) {
+  //String wstr = this->pref.getString("wtr");
+   String wstr = "568785412366547898745632";
+    if (wstr!="") {
         OSW_LOG_I("size of wstr: ", wstr.length());
         if( (wstr.length() % 8) != 0 ) {
             this->dataLoaded = false;
+            OSW_LOG_I("f1");
             return false;
         }
         if( wstr.length()<16) {
+        OSW_LOG_I("f2");
             this->dataLoaded = false;
             return false;
         }
@@ -434,13 +449,13 @@ void OswAppWeather::setup() {
     this->state1 = OswConfigAllKeys::weatherState1.get();
     this->api_key = OswConfigAllKeys::weatherApiKey.get();
     this->url = String(OPENWEATHERMAP_URL);
-    this->url.concat(this->location1);
-    this->url.concat(",");
-    this->url.concat(this->state1);
-    this->url.concat("&appid=");
-    this->url.concat(this->api_key);
-    this->url.concat("&cnt=24");
-    pref.begin("wheater-app");
+    this->url = this->url + this->location1;
+    this->url = this->url + ",";
+    this->url = this->url + this->state1;
+    this->url = this->url + "&appid=";
+    this->url = this->url + this->api_key;
+    this->url = this->url + "&cnt=24";
+    pref.begin("wheater-app", false);
     this->loadData();
     this->printWIcon.getHal(this->hal);
 }
@@ -453,6 +468,8 @@ void OswAppWeather::loop() {
         this->printDate();
         this->printLastUpdate();
     }
+    
+    #ifndef OSW_EMULATOR
     if(this->requestMode) {
         if (OswServiceAllTasks::wifi.isConnected()) {
             this->_request();
@@ -466,6 +483,20 @@ void OswAppWeather::loop() {
             this->hal->gfx()->print("connecting...");
         }
     }
+    #else
+    if(this->requestMode) {
+	    //pop-up
+	    this->_request();		
+	    this->hal->gfx()->drawThickLine(50,120,190,120,15,rgb888(255,255,255),true);
+	    this->hal->gfx()->drawThickLine(51,120,189,120,14,rgb888(0,0,0),true);
+	    this->hal->gfx()->setTextCursor(120,120);
+	    this->hal->gfx()->setTextColor(rgb888(255,255,255));
+	    this->hal->gfx()->setTextCenterAligned();
+	    this->hal->gfx()->setTextMiddleAligned();
+	    this->hal->gfx()->print("connecting...");
+
+    }
+    #endif 
     if (hal->btnHasGoneDown(BUTTON_2)) {
         if(this->mainSelector==1) { // next update
             if(this->updtSelector<23) {
